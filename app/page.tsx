@@ -299,8 +299,11 @@ const App = () => {
                         // ИСПРАВЛЕНИЕ: Явно приводим тип
                         const userData: UserProfile = await response.json() as UserProfile; 
                         setUser(userData);
-                    } catch (error: unknown) { // ИСПРАВЛЕНИЕ: Типизация ошибки
-                        setLoadError((error as Error).message || 'Ошибка загрузки профиля.');
+                    } catch (error) { // error теперь неявно 'unknown'
+                        const errorMessage = error instanceof Error 
+                            ? error.message 
+                            : 'Ошибка загрузки профиля.'; // Если это не Error, используем заглушку
+                        setLoadError(errorMessage);
                     } finally {
                         setIsLoadingProfile(false);
                     }
