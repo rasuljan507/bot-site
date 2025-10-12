@@ -21,7 +21,7 @@ interface UserProfile {
 }
 
 interface ProfileCardProps {
-    icon: React.ReactElement<any>;
+    icon: React.ReactElement<React.SVGProps<SVGSVGElement>>;
     title: string;
     value: string;
     color: string;
