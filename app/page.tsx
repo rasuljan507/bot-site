@@ -205,7 +205,7 @@ const ChatView: React.FC<ChatViewProps> = ({ user, setView }) => {
              // Отправляем специальный триггер в LLM для генерации 3 вопросов
              sendMessage('Задай пользователю три стартовых вопроса: про еду, аллергию и нелюбимые продукты, используя контекст его цели.'); 
         }
-    }, [user]); 
+    }, [user, messages.length, sendMessage]); 
 
     return (
         <div className="flex flex-col h-screen bg-gray-50">
