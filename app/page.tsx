@@ -1,7 +1,7 @@
 'use client'; 
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, User, Send, ChevronLeft, LogOut, Clock, Target, Calendar } from 'lucide-react';
+import { Send, ChevronLeft, LogOut, Clock, Target, Calendar } from 'lucide-react';
 
 // --- 1. ТИПЫ ДАННЫХ ДЛЯ TYPESCRIPT ---
 // Определяем типы для данных, которые мы получаем из PostgreSQL через API

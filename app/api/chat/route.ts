@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 
 // --- Безопасное чтение переменных окружения ---
 const YAGPT_API_KEY = process.env.YAGPT_API_KEY;
