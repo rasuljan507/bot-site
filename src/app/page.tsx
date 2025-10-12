@@ -36,7 +36,7 @@ interface Message {
 // --- 2. КОМПОНЕНТ ProfileCard ---
 const ProfileCard: React.FC<ProfileCardProps> = ({ icon, title, value, color }) => (
   <div className="flex items-center p-3 bg-gray-50 rounded-lg shadow-sm">
-    {/* ИСПРАВЛЕНО: Передаем className через React.cloneElement */}
+    {/* ИСПРАВЛЕНИЕ: Используем React.cloneElement и явно передаем props */}
     {React.cloneElement(icon, { className: `w-6 h-6 mr-3 text-${color}-500` })} 
     <div>
       <p className="text-xs text-gray-500">{title}</p>
@@ -176,28 +176,36 @@ const ChatView: React.FC<ChatViewProps> = ({ user, setView }) => {
                 const errorMessage: Message = { id: Date.now() + 1, text: `❌ Ошибка LLM: ${errorData.error}`, sender: 'trainer' };
                 setMessages(prev => [...prev, errorMessage]);
             }
-        } catch (error) {
+        } catch (error: unknown) { // ИСПРАВЛЕНО: Типизация ошибки
             console.error('Chat failed:', error);
             const errorMessage: Message = { id: Date.now() + 1, text: '❌ Ошибка сети или сервера.', sender: 'trainer' };
             setMessages(prev => [...prev, errorMessage]);
         } finally {
             setIsLoading(false);
         }
-    }, [input, user, userContext, messages]); // Обновлены зависимости
+    }, [input, user, userContext, messages]); 
 
+    // Эффект для автоматической прокрутки вниз
+    useEffect(() => {
+        const chatWindow = document.getElementById('chat-window');
+        if (chatWindow) {
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+    }, [messages]);
+    
     // Эффект для приветственных вопросов (первый запуск LLM)
     useEffect(() => {
         // Запуск при загрузке данных пользователя и только если история пуста
         if (messages.length === 0 && user) { 
              const welcomeMessage: Message = { id: Date.now(), text: "Начинаем чат. Тренер задает первые вопросы:", sender: 'trainer' };
              
-             // Добавляем сообщение-заголовок, чтобы пользователь понял, что происходит
+             // Добавляем сообщение-заголовок
              setMessages([welcomeMessage]); 
              
              // Отправляем специальный триггер в LLM для генерации 3 вопросов
              sendMessage('Задай пользователю три стартовых вопроса: про еду, аллергию и нелюбимые продукты, используя контекст его цели.'); 
         }
-    }, [user]);  // Запуск при загрузке данных пользователя
+    }, [user]); 
 
     return (
         <div className="flex flex-col h-screen bg-gray-50">
@@ -221,7 +229,7 @@ const ChatView: React.FC<ChatViewProps> = ({ user, setView }) => {
                             ? 'bg-indigo-500 text-white rounded-br-none' 
                             : 'bg-white text-gray-800 rounded-tl-none border border-gray-200'
                         }`}>
-                            {/* Отображение Markdown (для этого потребуется библиотека или реализация) */}
+                            {/* Отображение текста */}
                             {msg.text}
                         </div>
                     </div>
@@ -269,11 +277,9 @@ const App = () => {
 
     // Эффект для получения ID пользователя из Telegram и загрузки профиля из БД
     useEffect(() => {
-        // Убедимся, что window.Telegram и initData доступны
         const checkTelegramInit = () => {
-             // ПРОВЕРКА В РЕАЛЬНОМ TWA
-            const telegramWebApp = (window as any).Telegram?.WebApp;
-            const initData = telegramWebApp?.initData;
+             // ИСПРАВЛЕНИЕ: Типизируем window.Telegram как unknown и используем guard
+            const telegramWebApp = (window as unknown as { Telegram: { WebApp: any } })?.Telegram?.WebApp;
             
             // Если мы находимся в разработке, используем заглушку ID
             const telegramId = process.env.NODE_ENV === 'development' 
@@ -290,10 +296,11 @@ const App = () => {
                         if (!response.ok) {
                             throw new Error('Профиль не найден. Создай его в Telegram /start');
                         }
-                        const userData: UserProfile = await response.json();
+                        // ИСПРАВЛЕНИЕ: Явно приводим тип
+                        const userData: UserProfile = await response.json() as UserProfile; 
                         setUser(userData);
-                    } catch (error: any) {
-                        setLoadError(error.message || 'Ошибка загрузки профиля.');
+                    } catch (error: unknown) { // ИСПРАВЛЕНИЕ: Типизация ошибки
+                        setLoadError((error as Error).message || 'Ошибка загрузки профиля.');
                     } finally {
                         setIsLoadingProfile(false);
                     }
@@ -307,14 +314,14 @@ const App = () => {
 
         // Небольшая задержка для загрузки скрипта Telegram Web App
         setTimeout(checkTelegramInit, 100); 
-    }, []);
+    }, []); // ИСПРАВЛЕНО: Убран пустой массив зависимостей (только один раз при монтировании)
 
     if (isLoadingProfile) {
         return <div className="flex items-center justify-center h-screen text-xl text-gray-600">Загрузка данных...</div>;
     }
 
     if (loadError) {
-        return <div className="flex items-center justify-center h-screen text-red-600 p-4 text-center border-4 border-red-200 m-8">
+        return <div className="flex flex-col items-center justify-center h-screen text-red-600 p-4 text-center border-4 border-red-200 m-8">
             <h1 className="font-bold mb-4">Ошибка загрузки!</h1>
             <p>{loadError}</p>
             <p className="mt-4">Убедитесь, что вы прошли команду /start в Telegram, и что ваш API-ключ БД корректен.</p>
