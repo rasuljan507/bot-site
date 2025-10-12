@@ -279,7 +279,7 @@ const App = () => {
     useEffect(() => {
         const checkTelegramInit = () => {
              // ИСПРАВЛЕНИЕ: Типизируем window.Telegram как unknown и используем guard
-            const telegramWebApp = (window as unknown as { Telegram: { WebApp: any } })?.Telegram?.WebApp;
+            const telegramWebApp = (window as unknown as { Telegram: { WebApp: { initDataUnsafe?: { user?: { id: number } } } } })?.Telegram?.WebApp;
             
             // Если мы находимся в разработке, используем заглушку ID
             const telegramId = process.env.NODE_ENV === 'development' 
