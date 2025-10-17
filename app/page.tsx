@@ -3,6 +3,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Send, ChevronLeft, LogOut, Clock, Target, Calendar } from 'lucide-react';
 
+// --- 0. ГЛОБАЛЬНОЕ ОБЪЯВЛЕНИЕ ТИПА ДЛЯ TELEGRAM (ИСПРАВЛЕНИЕ ОШИБКИ) ---
+// Это позволит TypeScript корректно распознавать window.Telegram
+declare global {
+    interface Window {
+        Telegram: {
+            WebApp: {
+                initDataUnsafe?: {
+                    user?: {
+                        id: number;
+                    };
+                };
+                // Добавьте другие свойства WebApp, если они будут использоваться
+            };
+        };
+    }
+}
+// -------------------------------------------------------------------
+
+
 // --- 1. ТИПЫ ДАННЫХ ДЛЯ TYPESCRIPT ---
 // Определяем типы для данных, которые мы получаем из PostgreSQL через API
 interface UserProfile {
@@ -301,10 +320,10 @@ const App = () => {
     // Эффект для получения ID пользователя из Telegram и загрузки профиля из БД
     useEffect(() => {
         // Функция для безопасного доступа к Telegram WebApp
-        // ИСПРАВЛЕНИЕ ОШИБКИ: Заменяем 'any' на безопасный доступ, чтобы избежать ошибки линтера
+        // ИСПРАВЛЕНИЕ ОШИБКИ: Теперь используем объявленный глобальный тип Window
         const getTelegramWebApp = () => {
-            if (typeof window !== 'undefined' && (window as any).Telegram && (window as any).Telegram.WebApp) {
-                return (window as any).Telegram.WebApp;
+            if (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp) {
+                return window.Telegram.WebApp;
             }
             return null;
         };
