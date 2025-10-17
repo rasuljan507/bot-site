@@ -275,49 +275,72 @@ const App = () => {
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
 
+    // ВАЖНО: Определяем fetchProfile внутри App, чтобы его можно было вызвать.
+    const fetchProfile = async (id: number) => {
+        setIsLoadingProfile(true);
+        setLoadError(null);
+        try {
+            const response = await fetch(`/api/profile?id=${id}`);
+            if (!response.ok) {
+                // Если статус 404/500, значит, либо не найден, либо ошибка БД
+                throw new Error('Профиль не найден. Создай его в Telegram /start');
+            }
+            // ИСПРАВЛЕНИЕ: Явно приводим тип
+            const userData: UserProfile = await response.json() as UserProfile; 
+            setUser(userData);
+        } catch (error) { // error теперь неявно 'unknown'
+            const errorMessage = error instanceof Error 
+                ? error.message 
+                : 'Ошибка загрузки профиля.'; // Если это не Error, используем заглушку
+            setLoadError(errorMessage);
+        } finally {
+            setIsLoadingProfile(false);
+        }
+    };
+    
     // Эффект для получения ID пользователя из Telegram и загрузки профиля из БД
     useEffect(() => {
-        const checkTelegramInit = () => {
-             // ИСПРАВЛЕНИЕ: Типизируем window.Telegram как unknown и используем guard
-            const telegramWebApp = (window as unknown as { Telegram: { WebApp: { initDataUnsafe?: { user?: { id: number } } } } })?.Telegram?.WebApp;
-            
-            // Если мы находимся в разработке, используем заглушку ID
-            const telegramId = process.env.NODE_ENV === 'development' 
-                ? 1056878733 // Заглушка ID
-                : telegramWebApp?.initDataUnsafe?.user?.id;
-            
-            if (telegramId) {
-                // Загрузка профиля через API-маршрут
-                const fetchProfile = async (id: number) => {
-                    setIsLoadingProfile(true);
-                    setLoadError(null);
-                    try {
-                        const response = await fetch(`/api/profile?id=${id}`);
-                        if (!response.ok) {
-                            throw new Error('Профиль не найден. Создай его в Telegram /start');
-                        }
-                        // ИСПРАВЛЕНИЕ: Явно приводим тип
-                        const userData: UserProfile = await response.json() as UserProfile; 
-                        setUser(userData);
-                    } catch (error) { // error теперь неявно 'unknown'
-                        const errorMessage = error instanceof Error 
-                            ? error.message 
-                            : 'Ошибка загрузки профиля.'; // Если это не Error, используем заглушку
-                        setLoadError(errorMessage);
-                    } finally {
-                        setIsLoadingProfile(false);
-                    }
-                };
-                fetchProfile(telegramId);
-            } else {
-                setIsLoadingProfile(false);
-                setLoadError("Не удалось получить ID пользователя Telegram. Убедитесь, что приложение запущено через Telegram Web App.");
-            }
+        // Функция для безопасного доступа к Telegram WebApp
+        const getTelegramWebApp = () => {
+            return (window as any)?.Telegram?.WebApp;
         };
 
-        // Небольшая задержка для загрузки скрипта Telegram Web App
-        setTimeout(checkTelegramInit, 100); 
-    }, []); // ИСПРАВЛЕНО: Убран пустой массив зависимостей (только один раз при монтировании)
+        const checkTelegramInit = () => {
+            // ВАЖНО: setIsLoadingProfile(true) уже стоит в fetchProfile, здесь не нужно.
+            let attempts = 0;
+            const maxAttempts = 20; // Ждем до 2 секунд (20 * 100 мс)
+
+            const intervalId = setInterval(async () => {
+                const telegramWebApp = getTelegramWebApp();
+                const telegramId = telegramWebApp?.initDataUnsafe?.user?.id;
+                
+                // ВАЖНО: Используем заглушку только для Development
+                if (process.env.NODE_ENV === 'development') {
+                    clearInterval(intervalId);
+                    await fetchProfile(1056878733); // Заглушка ID
+                    return;
+                }
+
+                if (telegramId) {
+                    clearInterval(intervalId);
+                    // Если ID получен, вызываем функцию загрузки профиля
+                    await fetchProfile(telegramId); 
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(intervalId);
+                    setIsLoadingProfile(false);
+                    // Если таймаут, выводим ошибку, которую видит пользователь
+                    setLoadError("Не удалось получить ID пользователя Telegram. Проверьте BotFather и способ запуска.");
+                }
+                
+                attempts++;
+            }, 100); // Проверяем каждые 100 мс
+            
+            // Очистка интервала при размонтировании
+            return () => clearInterval(intervalId);
+        };
+
+        checkTelegramInit(); // Запускаем цикл проверки
+    }, []); // Пустой массив зависимостей (только один раз при монтировании)
 
     if (isLoadingProfile) {
         return <div className="flex items-center justify-center h-screen text-xl text-gray-600">Загрузка данных...</div>;
