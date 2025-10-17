@@ -301,8 +301,12 @@ const App = () => {
     // Эффект для получения ID пользователя из Telegram и загрузки профиля из БД
     useEffect(() => {
         // Функция для безопасного доступа к Telegram WebApp
+        // ИСПРАВЛЕНИЕ ОШИБКИ: Заменяем 'any' на безопасный доступ, чтобы избежать ошибки линтера
         const getTelegramWebApp = () => {
-            return (window as any)?.Telegram?.WebApp;
+            if (typeof window !== 'undefined' && (window as any).Telegram && (window as any).Telegram.WebApp) {
+                return (window as any).Telegram.WebApp;
+            }
+            return null;
         };
 
         const checkTelegramInit = () => {
